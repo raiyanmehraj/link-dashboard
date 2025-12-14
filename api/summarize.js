@@ -45,6 +45,7 @@ if (!process.env.OPENROUTER_API_KEY && process.env.NODE_ENV !== 'production') {
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 // List of precise free models with better limits, ordered by quality
+// Using known working free models from OpenRouter
 const FREE_MODELS = [
   'mistralai/mistral-7b-instruct:free',
   'meta-llama/llama-3.1-8b-instruct:free',
@@ -268,49 +269,30 @@ module.exports = async function (req, res) {
       return;
     }
 
-    // Fetch and extract — if blocked, return a clear error
+    // Fetch and extract — if blocked, we'll still try AI with minimal info
     let html = '';
+    let fetchBlocked = false;
     try {
       html = await fetchHtml(url);
     } catch (err) {
       console.warn('[summarize] fetchHtml failed:', err?.message || err);
-      res.status(502).json({
-        error: 'Content fetch blocked or unavailable for this URL. Try again later or use a different source.',
-        code: 'FETCH_BLOCKED'
-      });
-      return;
+      fetchBlocked = true;
     }
 
     const extracted = extractContent(html, url) || {};
 
-    // If extraction fails: fallback to meta description. Use JSDOM to get meta description
+    // If extraction fails: fallback to meta description
     if (!extracted.content && html) {
       const dom = new JSDOM(html, { url });
       const doc = dom.window.document;
       const metaDescription = doc.querySelector('meta[name="description"]')?.getAttribute('content') || '';
-      extracted.content = metaDescription || ''; // maybe empty
+      extracted.content = metaDescription || '';
       extracted.excerpt = metaDescription || '';
       extracted.title = doc.title || '';
     }
-    // If we still have no content, do NOT call the model — avoid hallucinated summaries
-    if (!extracted.content && !extracted.excerpt) {
-      res.status(422).json({
-        error: 'No readable content extracted from this URL. The site may prevent scraping.',
-        code: 'NO_CONTENT'
-      });
-      return;
-    }
-
-    // If extraction fails: fallback to meta description. Use JSDOM to get meta description
-    if (!extracted.content && html) {
-      const dom = new JSDOM(html, { url });
-      const doc = dom.window.document;
-      const metaDescription = doc.querySelector('meta[name="description"]')?.getAttribute('content') || '';
-      extracted.content = metaDescription || ''; // maybe empty
-      extracted.excerpt = metaDescription || '';
-      extracted.title = doc.title || '';
-    }
-    // If we still have no content (blocked fetch), at least pass the URL to the model
+    
+    // Even with no content, we'll try AI models as fallback
+    // They might be able to provide context based on URL or minimal info
     if (!extracted.content) {
       extracted.content = '';
       extracted.excerpt = extracted.excerpt || '';
@@ -331,6 +313,26 @@ module.exports = async function (req, res) {
       console.log('[summarize] OpenRouter call succeeded');
     } catch (err) {
       console.error('[summarize] OpenRouter call failed:', err);
+      
+      // If fetch was blocked and AI also failed, return fetch error
+      if (fetchBlocked) {
+        res.status(502).json({ 
+          error: 'Content fetch blocked or unavailable for this URL. Try again later or use a different source.',
+          code: 'FETCH_BLOCKED'
+        });
+        return;
+      }
+      
+      // If we had no content and AI failed, return content error
+      if (!extracted.content && !extracted.excerpt) {
+        res.status(422).json({
+          error: 'No readable content extracted from this URL. The site may prevent scraping.',
+          code: 'NO_CONTENT'
+        });
+        return;
+      }
+      
+      // Otherwise, return the AI error
       res.status(500).json({ error: `Summarization failed: ${err.message}` });
       return;
     }
