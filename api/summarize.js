@@ -176,7 +176,7 @@ async function callOpenRouterSummarize({ title, excerpt, content, url, apiKeys }
       }
 
       try {
-        console.log('[summarize] Sending request to OpenRouter API...');
+        console.log(`[summarize] Sending request using key #${k + 1} with model ${currentModel}...`);
         const res = await fetch(OPENROUTER_API_URL, {
           method: 'POST',
           headers: {
@@ -188,7 +188,7 @@ async function callOpenRouterSummarize({ title, excerpt, content, url, apiKeys }
           },
           body: JSON.stringify(body),
         });
-        console.log('[summarize] OpenRouter responded with status:', res.status);
+        console.log(`[summarize] OpenRouter responded with status: ${res.status} (key #${k + 1}, model ${currentModel})`);
 
         // If rate limited or model not found, try next key/model
         if (res.status === 429 || res.status === 404) {
@@ -214,7 +214,7 @@ async function callOpenRouterSummarize({ title, excerpt, content, url, apiKeys }
         if (!message) {
           throw new Error('No message returned from OpenRouter');
         }
-        console.log(`[summarize] ✓ Success with model: ${currentModel}`);
+        console.log(`[summarize] ✓ Success with model: ${currentModel} using key #${k + 1}`);
         return message;
       } catch (err) {
         console.error(`[summarize] Error with ${currentModel}:`, err.message);
