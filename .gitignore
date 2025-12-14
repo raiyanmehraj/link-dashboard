@@ -1,1 +1,10 @@
-"api/.env.local`napi/.env`n.env.local`n.env`nnode_modules/`n.vercel" | Out-File -FilePath .gitignore -Encoding UTF8
+﻿.vercel
+
+# Environment files
+api/.env.local
+api/.env
+.env.local
+.env
+
+# Dependencies
+node_modules/
