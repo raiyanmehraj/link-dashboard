@@ -2,7 +2,7 @@
   {
     "id": "1",
     "title": "🚨BracU Notes🚨",
-    "url": "https://bracu-notes-f56c9.web.app/",
+    "url": "https://",
     "category": "Study Materials",
     "contributor": "Shrabon, A. H.",
     "tags": [
@@ -11,7 +11,18 @@
       "coding"
     ],
     "createdAt": 1765735200000,
-    "subEntries": [],
+    "subEntries": [
+      {
+        "id": "8c709d6a-99f8-4ff8-83e7-5f04b3a802a5",
+        "title": "BracU Notes Web-App",
+        "url": "https://bracu-notes-f56c9.web.app/"
+      },
+      {
+        "id": "98be4ab4-52e1-45a4-b541-e30fd55570e6",
+        "title": "Resource Thread",
+        "url": "https://www.facebook.com/groups/488022473475837/posts/871531851791562/"
+      }
+    ],
     "isError": true
   },
   {
@@ -41,8 +52,7 @@
       "Daily"
     ],
     "createdAt": 1765741575776,
-    "subEntries": [],
-    "isError": true
+    "subEntries": []
   },
   {
     "id": "4",
@@ -56,8 +66,7 @@
       "Advanced"
     ],
     "createdAt": 1765741565776,
-    "subEntries": [],
-    "isError": true
+    "subEntries": []
   },
   {
     "id": "5",
