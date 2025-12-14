@@ -1,4 +1,15 @@
-﻿.vercel
+﻿# Ignore local environment files and secrets
+.env
+.env.local
+api/.env
+api/.env.local
+
+# Vercel local project files
+.vercel
+
+# Node modules
+node_modules/
+.vercel
 
 # Environment files
 api/.env.local
