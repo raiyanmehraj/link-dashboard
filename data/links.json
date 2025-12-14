@@ -10,7 +10,8 @@
       "bracu"
     ],
     "createdAt": 1765735200000,
-    "subEntries": []
+    "subEntries": [],
+    "isError": true
   },
   {
     "id": "2",
