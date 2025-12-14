@@ -2,6 +2,7 @@
 const CATEGORIES = ['Study Materials', 'Development', 'Tools and other'];
 const STORAGE_KEY = 'study-links';
 const THEME_STORAGE_KEY = 'link-dashboard-theme';
+const GITHUB_SYNC_ENABLED = true; // Set to false to disable GitHub sync
 
 let state = {
   links: [],
@@ -131,6 +132,14 @@ const elements = {
 function init() {
   initTheme();
   loadLinksFromStorage();
+  
+  // Auto-load from GitHub on startup (if available)
+  if (GITHUB_SYNC_ENABLED) {
+    loadLinksFromGitHub().catch(err => {
+      console.log('No GitHub data to load, using localStorage');
+    });
+  }
+  
   renderSidebar();
   renderLinks();
   attachEventListeners();
@@ -160,6 +169,69 @@ function saveLinksToStorage() {
   // Persist links without summaries so cards reset on refresh
   const sanitized = state.links.map(clearSummaries);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
+  
+  // Auto-sync to GitHub after saving locally
+  if (GITHUB_SYNC_ENABLED) {
+    saveLinksToGitHub().catch(err => {
+      console.warn('Auto-sync to GitHub failed (silent):', err.message);
+    });
+  }
+}
+
+// GitHub Sync Functions
+async function saveLinksToGitHub() {
+  if (!GITHUB_SYNC_ENABLED) {
+    return;
+  }
+
+  try {
+    const sanitized = state.links.map(clearSummaries);
+    const response = await fetch('/api/saveLinks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ links: sanitized }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to save to GitHub');
+    }
+
+    const result = await response.json();
+    console.log('✅ Auto-synced to GitHub:', result.commit);
+    return result;
+  } catch (err) {
+    console.error('GitHub auto-sync error:', err);
+    throw err;
+  }
+}
+
+async function loadLinksFromGitHub() {
+  if (!GITHUB_SYNC_ENABLED) {
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/loadLinks');
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to load from GitHub');
+    }
+
+    const result = await response.json();
+    if (result.links && result.links.length > 0) {
+      state.links = result.links.map(clearSummaries);
+      saveLinksToStorage(); // Also save to localStorage
+      renderLinks();
+      renderSidebar();
+      console.log('✅ Loaded from GitHub:', result.links.length, 'links');
+    }
+    return result;
+  } catch (err) {
+    console.log('GitHub load skipped:', err.message);
+    throw err;
+  }
 }
 
 // Helpers
