@@ -25,7 +25,8 @@
       "Psychology"
     ],
     "createdAt": 1765741585776,
-    "subEntries": []
+    "subEntries": [],
+    "isError": true
   },
   {
     "id": "3",
