@@ -8,6 +8,11 @@ module.exports = async function (req, res) {
       return;
     }
 
+    // Disable caching to always serve fresh data
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     // Get GitHub credentials from environment
     const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
     const GITHUB_REPO = process.env.GITHUB_REPO || 'raiyanmehraj/link-dashboard';
@@ -58,7 +63,7 @@ module.exports = async function (req, res) {
     const links = JSON.parse(content);
 
     console.log(`[loadLinks] Successfully loaded ${links.length} links from GitHub`);
-    res.json({ links, sha: fileData.sha });
+    res.json({ links, sha: fileData.sha, fetchedAt: Date.now() });
   } catch (err) {
     console.error('[loadLinks] Error:', err);
     res.status(500).json({ error: `Failed to load from GitHub: ${err.message}` });

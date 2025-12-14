@@ -214,7 +214,7 @@ async function loadLinksFromGitHub() {
   }
 
   try {
-    const response = await fetch('/api/loadLinks');
+    const response = await fetch('/api/loadLinks', { cache: 'no-store' });
     
     if (!response.ok) {
       const error = await response.json();
