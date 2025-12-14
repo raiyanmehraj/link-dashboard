@@ -269,14 +269,17 @@ module.exports = async function (req, res) {
       return;
     }
 
-    // Fetch and extract — if blocked, we'll still try AI with minimal info
+    // Fetch and extract — if blocked, stop early to avoid hallucinated summaries
     let html = '';
-    let fetchBlocked = false;
     try {
       html = await fetchHtml(url);
     } catch (err) {
       console.warn('[summarize] fetchHtml failed:', err?.message || err);
-      fetchBlocked = true;
+      res.status(502).json({
+        error: 'Content fetch blocked or unavailable for this URL. Try again later or use a different source.',
+        code: 'FETCH_BLOCKED'
+      });
+      return;
     }
 
     const extracted = extractContent(html, url) || {};
@@ -290,13 +293,14 @@ module.exports = async function (req, res) {
       extracted.excerpt = metaDescription || '';
       extracted.title = doc.title || '';
     }
-    
-    // Even with no content, we'll try AI models as fallback
-    // They might be able to provide context based on URL or minimal info
-    if (!extracted.content) {
-      extracted.content = '';
-      extracted.excerpt = extracted.excerpt || '';
-      extracted.title = extracted.title || '';
+
+    // If still nothing readable, stop early to avoid incorrect summaries
+    if (!extracted.content && !extracted.excerpt) {
+      res.status(422).json({
+        error: 'No readable content extracted from this URL. The site may prevent scraping.',
+        code: 'NO_CONTENT'
+      });
+      return;
     }
 
     // Call model
@@ -313,25 +317,6 @@ module.exports = async function (req, res) {
       console.log('[summarize] OpenRouter call succeeded');
     } catch (err) {
       console.error('[summarize] OpenRouter call failed:', err);
-      
-      // If fetch was blocked and AI also failed, return fetch error
-      if (fetchBlocked) {
-        res.status(502).json({ 
-          error: 'Content fetch blocked or unavailable for this URL. Try again later or use a different source.',
-          code: 'FETCH_BLOCKED'
-        });
-        return;
-      }
-      
-      // If we had no content and AI failed, return content error
-      if (!extracted.content && !extracted.excerpt) {
-        res.status(422).json({
-          error: 'No readable content extracted from this URL. The site may prevent scraping.',
-          code: 'NO_CONTENT'
-        });
-        return;
-      }
-      
       // Otherwise, return the AI error
       res.status(500).json({ error: `Summarization failed: ${err.message}` });
       return;
