@@ -78,26 +78,37 @@ function getApiKeys() {
   const keys = [];
   const env = process.env || {};
 
+  // Debug: log what env vars are available
+  console.log('[getApiKeys] Checking environment variables...');
+  console.log('[getApiKeys] OPENROUTER_API_KEY_1:', env.OPENROUTER_API_KEY_1 ? 'SET' : 'NOT SET');
+  console.log('[getApiKeys] OPENROUTER_API_KEY_2:', env.OPENROUTER_API_KEY_2 ? 'SET' : 'NOT SET');
+  console.log('[getApiKeys] OPENROUTER_API_KEY:', env.OPENROUTER_API_KEY ? 'SET' : 'NOT SET');
+
   // Collect numbered keys (up to 10 for practicality)
   for (let i = 1; i <= 10; i++) {
     const val = env[`OPENROUTER_API_KEY_${i}`];
     if (val && typeof val === 'string' && val.trim().length > 0) {
       keys.push(val.trim());
+      console.log(`[getApiKeys] Added key #${i}`);
     }
   }
 
   // Fallback to single key
   if (env.OPENROUTER_API_KEY && typeof env.OPENROUTER_API_KEY === 'string' && env.OPENROUTER_API_KEY.trim().length > 0) {
     keys.push(env.OPENROUTER_API_KEY.trim());
+    console.log('[getApiKeys] Added fallback key');
   }
 
   // De-duplicate while preserving order
   const seen = new Set();
-  return keys.filter(k => {
+  const uniqueKeys = keys.filter(k => {
     if (seen.has(k)) return false;
     seen.add(k);
     return true;
   });
+  
+  console.log(`[getApiKeys] Total unique keys loaded: ${uniqueKeys.length}`);
+  return uniqueKeys;
 }
 
 async function fetchHtml(url) {
