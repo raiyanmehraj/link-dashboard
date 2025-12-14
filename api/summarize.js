@@ -164,6 +164,10 @@ async function callOpenRouterSummarize({ title, excerpt, content, url, apiKeys }
   // Try each free model in sequence until one works
   let lastError;
   const exhaustedKeys = new Set();
+  const referer = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : (process.env.SITE_URL || 'http://localhost:3000');
+
   for (let modelIndex = 0; modelIndex < FREE_MODELS.length; modelIndex++) {
     const currentModel = FREE_MODELS[modelIndex];
     
@@ -195,7 +199,7 @@ async function callOpenRouterSummarize({ title, excerpt, content, url, apiKeys }
             'Content-Type': 'application/json',
             Authorization: `Bearer ${apiKey}`,
             // Recommended headers for OpenRouter
-            'HTTP-Referer': 'http://localhost:3000',
+            'HTTP-Referer': referer,
             'X-Title': 'Link Dashboard',
           },
           body: JSON.stringify(body),
@@ -218,6 +222,13 @@ async function callOpenRouterSummarize({ title, excerpt, content, url, apiKeys }
         if (!res.ok) {
           const txt = await res.text();
           console.error('[summarize] OpenRouter error response:', txt);
+          // Treat 401 as an invalid/expired key and try next key
+          if (res.status === 401) {
+            console.warn('[summarize] 401 Unauthorized – marking key exhausted and trying next key');
+            exhaustedKeys.add(apiKey);
+            lastError = new Error(`401: ${txt}`);
+            continue; // try next key
+          }
           throw new Error(`OpenRouter API error: ${res.status} ${txt}`);
         }
 
