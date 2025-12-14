@@ -41,7 +41,8 @@
       "Daily"
     ],
     "createdAt": 1765741575776,
-    "subEntries": []
+    "subEntries": [],
+    "isError": true
   },
   {
     "id": "4",
