@@ -1,0 +1,71 @@
+[
+  {
+    "id": "1",
+    "title": "🚨BracU Notes🚨",
+    "url": "https://bracu-notes-f56c9.web.app/",
+    "category": "Study Materials",
+    "contributor": "Shrabon, A. H.",
+    "tags": [
+      "study",
+      "bracu"
+    ],
+    "createdAt": 1765735200000,
+    "subEntries": []
+  },
+  {
+    "id": "2",
+    "title": "PHY 112: TKT YouTube Playlist ",
+    "url": "https://youtube.com/playlist?list=PLtQXTSdoymQegkOv8qyoy4xW5kZVdFKYF&si=0vH3uKd9KdFMsdTT",
+    "category": "Study Materials",
+    "contributor": "Shrabon, A. H.",
+    "tags": [
+      "Habits",
+      "Productivity",
+      "Psychology"
+    ],
+    "createdAt": 1765741585776,
+    "subEntries": []
+  },
+  {
+    "id": "3",
+    "title": "CSE 220: Udemy - Java DSA by Scott Barret",
+    "url": "https://mega.nz/folder/4JFEmDBR#AyNtJrRAWA9lYmU_t_UB6Q",
+    "category": "Study Materials",
+    "contributor": "Shrabon, A. H.",
+    "tags": [
+      "Stoicism",
+      "Philosophy",
+      "Daily"
+    ],
+    "createdAt": 1765741575776,
+    "subEntries": []
+  },
+  {
+    "id": "4",
+    "title": "CSE220 Survivors' Guide",
+    "url": "https://www.facebook.com/groups/bracucsestudentcommunity/permalink/1437361640665763/#",
+    "category": "Study Materials",
+    "contributor": "Shrabon, A. H.",
+    "tags": [
+      "TypeScript",
+      "Programming",
+      "Advanced"
+    ],
+    "createdAt": 1765741565776,
+    "subEntries": []
+  },
+  {
+    "id": "5",
+    "title": "Linkedin",
+    "url": "https://www.linkedin.com/posts/waqar-ali-16ba6b318_phd-research-activity-7382750293949685760-TsUv?utm_source=social_share_send&utm_medium=android_app&rcm=ACoAAD-5Ei8Bp34OKoem35ShtSF0DIaZiwhUCL0&utm_campaign=copy_link",
+    "category": "Development",
+    "contributor": "Rahman. M ",
+    "tags": [
+      "Finance",
+      "Psychology",
+      "Wealth"
+    ],
+    "createdAt": 1765741555776,
+    "subEntries": []
+  }
+]
