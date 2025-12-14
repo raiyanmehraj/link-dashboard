@@ -46,11 +46,10 @@ if (!process.env.OPENROUTER_API_KEY && process.env.NODE_ENV !== 'production') {
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 // List of precise free models with better limits, ordered by quality
 const FREE_MODELS = [
+  'mistralai/mistral-7b-instruct:free',
   'meta-llama/llama-3.1-8b-instruct:free',
   'google/gemma-2-9b-it:free',
-  'mistralai/mistral-7b-instruct:free',
-  'meta-llama/llama-3.2-3b-instruct:free',
-  'microsoft/phi-3-medium-128k-instruct:free'
+  'meta-llama/llama-3.2-3b-instruct:free'
 ];
 const RETRY_DELAY_MS = 1500; // Shorter delay since we'll try different models
 const CACHE_TTL_SECONDS = 60 * 60 * 24; // 24 hours
@@ -70,6 +69,35 @@ function getFromCache(key) {
 
 function putInCache(key, value, ttl = CACHE_TTL_SECONDS) {
   cache.set(key, { value, expiresAt: Date.now() + ttl * 1000 });
+}
+
+// Load multiple OpenRouter API keys from environment variables.
+// Supports flexible numbered vars: OPENROUTER_API_KEY_1, OPENROUTER_API_KEY_2, ...
+// Falls back to OPENROUTER_API_KEY if only a single key is provided.
+function getApiKeys() {
+  const keys = [];
+  const env = process.env || {};
+
+  // Collect numbered keys (up to 10 for practicality)
+  for (let i = 1; i <= 10; i++) {
+    const val = env[`OPENROUTER_API_KEY_${i}`];
+    if (val && typeof val === 'string' && val.trim().length > 0) {
+      keys.push(val.trim());
+    }
+  }
+
+  // Fallback to single key
+  if (env.OPENROUTER_API_KEY && typeof env.OPENROUTER_API_KEY === 'string' && env.OPENROUTER_API_KEY.trim().length > 0) {
+    keys.push(env.OPENROUTER_API_KEY.trim());
+  }
+
+  // De-duplicate while preserving order
+  const seen = new Set();
+  return keys.filter(k => {
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
 }
 
 async function fetchHtml(url) {
@@ -105,7 +133,7 @@ function truncateContent(content, maxChars = 20000) {
   return content.length > maxChars ? content.slice(0, maxChars) : content;
 }
 
-async function callOpenRouterSummarize({ title, excerpt, content, url, apiKey }) {
+async function callOpenRouterSummarize({ title, excerpt, content, url, apiKeys }) {
   const text = `${title ? title + '\n\n' : ''}${excerpt ? excerpt + '\n\n' : ''}${content || ''}`;
   const truncated = truncateContent(text, 20000);
 
@@ -123,6 +151,7 @@ async function callOpenRouterSummarize({ title, excerpt, content, url, apiKey })
 
   // Try each free model in sequence until one works
   let lastError;
+  const exhaustedKeys = new Set();
   for (let modelIndex = 0; modelIndex < FREE_MODELS.length; modelIndex++) {
     const currentModel = FREE_MODELS[modelIndex];
     
@@ -139,47 +168,62 @@ async function callOpenRouterSummarize({ title, excerpt, content, url, apiKey })
       max_tokens: 200,  // Shorter for concise summaries
       temperature: 0.1,  // Lower for more precise/consistent output
     };
-
-    try {
-      console.log('[summarize] Sending request to OpenRouter API...');
-      const res = await fetch(OPENROUTER_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-          // Recommended headers for OpenRouter
-          'HTTP-Referer': 'http://localhost:3000',
-          'X-Title': 'Link Dashboard',
-        },
-        body: JSON.stringify(body),
-      });
-      console.log('[summarize] OpenRouter responded with status:', res.status);
-
-      // If rate limited or model not found, try next model
-      if (res.status === 429 || res.status === 404) {
-        const errorText = await res.text();
-        console.warn(`[summarize] Model ${currentModel} failed (${res.status}), trying next...`);
-        lastError = new Error(`${res.status}: ${errorText}`);
+    // Try each available key for this model
+    for (let k = 0; k < apiKeys.length; k++) {
+      const apiKey = apiKeys[k];
+      if (exhaustedKeys.has(apiKey)) {
         continue;
       }
 
-      if (!res.ok) {
-        const txt = await res.text();
-        console.error('[summarize] OpenRouter error response:', txt);
-        throw new Error(`OpenRouter API error: ${res.status} ${txt}`);
-      }
+      try {
+        console.log('[summarize] Sending request to OpenRouter API...');
+        const res = await fetch(OPENROUTER_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+            // Recommended headers for OpenRouter
+            'HTTP-Referer': 'http://localhost:3000',
+            'X-Title': 'Link Dashboard',
+          },
+          body: JSON.stringify(body),
+        });
+        console.log('[summarize] OpenRouter responded with status:', res.status);
 
-      const json = await res.json();
-      const message = json?.choices?.[0]?.message?.content || json?.choices?.[0]?.text || null;
-      if (!message) {
-        throw new Error('No message returned from OpenRouter');
+        // If rate limited or model not found, try next key/model
+        if (res.status === 429 || res.status === 404) {
+          const errorText = await res.text();
+          if (res.status === 429) {
+            console.warn(`[summarize] API key rate limited for model ${currentModel}. Switching key...`);
+            exhaustedKeys.add(apiKey);
+          } else {
+            console.warn(`[summarize] Model ${currentModel} not available (404). Trying next model...`);
+          }
+          lastError = new Error(`${res.status}: ${errorText}`);
+          continue; // try next key or model
+        }
+
+        if (!res.ok) {
+          const txt = await res.text();
+          console.error('[summarize] OpenRouter error response:', txt);
+          throw new Error(`OpenRouter API error: ${res.status} ${txt}`);
+        }
+
+        const json = await res.json();
+        const message = json?.choices?.[0]?.message?.content || json?.choices?.[0]?.text || null;
+        if (!message) {
+          throw new Error('No message returned from OpenRouter');
+        }
+        console.log(`[summarize] ✓ Success with model: ${currentModel}`);
+        return message;
+      } catch (err) {
+        console.error(`[summarize] Error with ${currentModel}:`, err.message);
+        lastError = err;
+        if (String(err.message).startsWith('429:')) {
+          exhaustedKeys.add(apiKey);
+        }
+        continue; // try next key
       }
-      console.log(`[summarize] ✓ Success with model: ${currentModel}`);
-      return message;
-    } catch (err) {
-      console.error(`[summarize] Error with ${currentModel}:`, err.message);
-      lastError = err;
-      continue;
     }
   }
   
@@ -205,13 +249,11 @@ module.exports = async function (req, res) {
       return res.json({ ...cached, cached: true });
     }
 
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
+    const apiKeys = getApiKeys();
+    if (!apiKeys || apiKeys.length === 0) {
       // Extra debug info to help diagnose env issues in dev
-      console.warn('[summarize] OPENROUTER_API_KEY not set. NODE_ENV=', process.env.NODE_ENV, 'cwd=', process.cwd());
-    }
-    if (!apiKey) {
-      res.status(500).json({ error: 'OpenRouter API key not configured' });
+      console.warn('[summarize] No OpenRouter API keys set. NODE_ENV=', process.env.NODE_ENV, 'cwd=', process.cwd());
+      res.status(500).json({ error: 'OpenRouter API key(s) not configured' });
       return;
     }
 
@@ -273,7 +315,7 @@ module.exports = async function (req, res) {
         excerpt: extracted.excerpt,
         content: extracted.content,
         url,
-        apiKey,
+        apiKeys,
       });
       console.log('[summarize] OpenRouter call succeeded');
     } catch (err) {
