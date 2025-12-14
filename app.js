@@ -129,15 +129,17 @@ const elements = {
   mobileSidebar: document.getElementById('mobileSidebar'),
 };
 // Initialize
-function init() {
+async function init() {
   initTheme();
   loadLinksFromStorage();
   
-  // Auto-load from GitHub on startup (if available)
+  // Auto-load from GitHub on startup (wait for it to complete before rendering)
   if (GITHUB_SYNC_ENABLED) {
-    loadLinksFromGitHub().catch(err => {
-      console.log('No GitHub data to load, using localStorage');
-    });
+    try {
+      await loadLinksFromGitHub();
+    } catch (err) {
+      console.log('Using localStorage (GitHub load failed)');
+    }
   }
   
   renderSidebar();
