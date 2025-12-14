@@ -27,16 +27,15 @@
   },
   {
     "id": "2",
-    "title": "PHY 112: TKT YouTube Playlist ",
+    "title": "PHY 112: TKT YouTube Playlist",
     "url": "https://youtube.com/playlist?list=PLtQXTSdoymQegkOv8qyoy4xW5kZVdFKYF&si=0vH3uKd9KdFMsdTT",
     "category": "Study Materials",
     "contributor": "Shrabon, A. H.",
     "tags": [
-      "Habits",
-      "Productivity",
-      "Psychology"
+      "phy112",
+      "TKT"
     ],
-    "createdAt": 1765741585776,
+    "createdAt": 1765735200000,
     "subEntries": [],
     "isError": true
   },
