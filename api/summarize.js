@@ -1,0 +1,294 @@
+/* Serverless function for Vercel/Netlify: /api/summarize
+ * Fetches a URL, extracts main text using readability, and calls OpenRouter (gpt-oss-120b)
+ * Expects POST JSON: { url }
+ * Requires OPENROUTER_API_KEY in process.env
+ *
+ * Dev note: In local development, we also attempt to load .env.local via dotenv
+ * if the env var is missing and NODE_ENV !== 'production'.
+ */
+
+/* eslint-disable no-undef */
+// Prefer the built-in fetch available on Node 18+ / v24; if missing, fail with a clear error
+const fetch = globalThis.fetch;
+if (!fetch) {
+  throw new Error('Global fetch is not available in this Node environment. Use Node 18+ or install node-fetch.');
+}
+const { JSDOM } = require('jsdom');
+const { Readability } = require('@mozilla/readability');
+
+// Attempt to load env from .env.local in development if not already present
+if (!process.env.OPENROUTER_API_KEY && process.env.NODE_ENV !== 'production') {
+  try {
+    const dotenv = require('dotenv');
+    // Try multiple candidate paths depending on CWD when running in dev
+    const candidatePaths = [
+      '.env.local',           // project root when CWD is root
+      '../.env.local',        // if function CWD is api/
+      process.cwd() + '/.env.local'
+    ];
+    let loaded = false;
+    for (const p of candidatePaths) {
+      const result = dotenv.config({ path: p });
+      if (result && !result.error && process.env.OPENROUTER_API_KEY) {
+        console.log('[summarize] OPENROUTER_API_KEY loaded from', p);
+        loaded = true;
+        break;
+      }
+    }
+    if (!loaded && !process.env.OPENROUTER_API_KEY) {
+      console.warn('[summarize] OPENROUTER_API_KEY undefined after attempting dotenv loads. CWD=', process.cwd());
+    }
+  } catch (e) {
+    console.warn('[summarize] dotenv load failed:', e?.message || e);
+  }
+}
+
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+// List of precise free models with better limits, ordered by quality
+const FREE_MODELS = [
+  'meta-llama/llama-3.1-8b-instruct:free',
+  'google/gemma-2-9b-it:free',
+  'mistralai/mistral-7b-instruct:free',
+  'meta-llama/llama-3.2-3b-instruct:free',
+  'microsoft/phi-3-medium-128k-instruct:free'
+];
+const RETRY_DELAY_MS = 1500; // Shorter delay since we'll try different models
+const CACHE_TTL_SECONDS = 60 * 60 * 24; // 24 hours
+
+// Simple in-memory cache (works for short-lived serverless warm instances; for production use a shared cache)
+const cache = new Map();
+
+function getFromCache(key) {
+  if (!cache.has(key)) return null;
+  const { value, expiresAt } = cache.get(key);
+  if (Date.now() > expiresAt) {
+    cache.delete(key);
+    return null;
+  }
+  return value;
+}
+
+function putInCache(key, value, ttl = CACHE_TTL_SECONDS) {
+  cache.set(key, { value, expiresAt: Date.now() + ttl * 1000 });
+}
+
+async function fetchHtml(url) {
+  // Basic fetch with retries and UA
+  const headers = {
+    'User-Agent': 'LinkDashboard/1.0 (https://github.com/your/repo)',
+    Accept: 'text/html,application/xhtml+xml',
+    'Accept-Language': 'en-US,en;q=0.9',
+  };
+  // Note: Node's global fetch does not support a `timeout` option; use AbortController if needed.
+  const res = await fetch(url, { headers, redirect: 'follow' });
+  if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
+  const html = await res.text();
+  return html;
+}
+
+function extractContent(html, url) {
+  const dom = new JSDOM(html, { url });
+  const reader = new Readability(dom.window.document);
+  const article = reader.parse();
+  if (!article) {
+    return null;
+  }
+  return {
+    title: article.title || '',
+    excerpt: article.excerpt || '',
+    content: article.textContent || article.content || '',
+  };
+}
+
+function truncateContent(content, maxChars = 20000) {
+  if (!content) return '';
+  return content.length > maxChars ? content.slice(0, maxChars) : content;
+}
+
+async function callOpenRouterSummarize({ title, excerpt, content, url, apiKey }) {
+  const text = `${title ? title + '\n\n' : ''}${excerpt ? excerpt + '\n\n' : ''}${content || ''}`;
+  const truncated = truncateContent(text, 20000);
+
+  // Build system + user messages for chat completion
+  const system = {
+    role: 'system',
+    content:
+      'You are a precise summarization assistant. Create ultra-concise summaries using minimal sentences while capturing core information.',
+  };
+
+  const user = {
+    role: 'user',
+    content: `Summarize this web page in 2-3 sentences maximum. Be precise and capture only the most essential information.\n\nSource URL: ${url}\n\nContent:\n${truncated}`,
+  };
+
+  // Try each free model in sequence until one works
+  let lastError;
+  for (let modelIndex = 0; modelIndex < FREE_MODELS.length; modelIndex++) {
+    const currentModel = FREE_MODELS[modelIndex];
+    
+    if (modelIndex > 0) {
+      console.log(`[summarize] Trying fallback model ${modelIndex + 1}/${FREE_MODELS.length}: ${currentModel}`);
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+    } else {
+      console.log(`[summarize] Trying primary model: ${currentModel}`);
+    }
+
+    const body = {
+      model: currentModel,
+      messages: [system, user],
+      max_tokens: 200,  // Shorter for concise summaries
+      temperature: 0.1,  // Lower for more precise/consistent output
+    };
+
+    try {
+      console.log('[summarize] Sending request to OpenRouter API...');
+      const res = await fetch(OPENROUTER_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+          // Recommended headers for OpenRouter
+          'HTTP-Referer': 'http://localhost:3000',
+          'X-Title': 'Link Dashboard',
+        },
+        body: JSON.stringify(body),
+      });
+      console.log('[summarize] OpenRouter responded with status:', res.status);
+
+      // If rate limited or model not found, try next model
+      if (res.status === 429 || res.status === 404) {
+        const errorText = await res.text();
+        console.warn(`[summarize] Model ${currentModel} failed (${res.status}), trying next...`);
+        lastError = new Error(`${res.status}: ${errorText}`);
+        continue;
+      }
+
+      if (!res.ok) {
+        const txt = await res.text();
+        console.error('[summarize] OpenRouter error response:', txt);
+        throw new Error(`OpenRouter API error: ${res.status} ${txt}`);
+      }
+
+      const json = await res.json();
+      const message = json?.choices?.[0]?.message?.content || json?.choices?.[0]?.text || null;
+      if (!message) {
+        throw new Error('No message returned from OpenRouter');
+      }
+      console.log(`[summarize] ✓ Success with model: ${currentModel}`);
+      return message;
+    } catch (err) {
+      console.error(`[summarize] Error with ${currentModel}:`, err.message);
+      lastError = err;
+      continue;
+    }
+  }
+  
+  throw lastError || new Error('All free models failed or rate-limited. Please try again in a few minutes.');
+}
+
+module.exports = async function (req, res) {
+  try {
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed, use POST' });
+      return;
+    }
+
+    const { url } = req.body || {};
+    if (!url || typeof url !== 'string') {
+      res.status(400).json({ error: 'Missing or invalid url' });
+      return;
+    }
+
+    const cacheKey = `summary:${url}`;
+    const cached = getFromCache(cacheKey);
+    if (cached) {
+      return res.json({ ...cached, cached: true });
+    }
+
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) {
+      // Extra debug info to help diagnose env issues in dev
+      console.warn('[summarize] OPENROUTER_API_KEY not set. NODE_ENV=', process.env.NODE_ENV, 'cwd=', process.cwd());
+    }
+    if (!apiKey) {
+      res.status(500).json({ error: 'OpenRouter API key not configured' });
+      return;
+    }
+
+    // Fetch and extract — if blocked, return a clear error
+    let html = '';
+    try {
+      html = await fetchHtml(url);
+    } catch (err) {
+      console.warn('[summarize] fetchHtml failed:', err?.message || err);
+      res.status(502).json({
+        error: 'Content fetch blocked or unavailable for this URL. Try again later or use a different source.',
+        code: 'FETCH_BLOCKED'
+      });
+      return;
+    }
+
+    const extracted = extractContent(html, url) || {};
+
+    // If extraction fails: fallback to meta description. Use JSDOM to get meta description
+    if (!extracted.content && html) {
+      const dom = new JSDOM(html, { url });
+      const doc = dom.window.document;
+      const metaDescription = doc.querySelector('meta[name="description"]')?.getAttribute('content') || '';
+      extracted.content = metaDescription || ''; // maybe empty
+      extracted.excerpt = metaDescription || '';
+      extracted.title = doc.title || '';
+    }
+    // If we still have no content, do NOT call the model — avoid hallucinated summaries
+    if (!extracted.content && !extracted.excerpt) {
+      res.status(422).json({
+        error: 'No readable content extracted from this URL. The site may prevent scraping.',
+        code: 'NO_CONTENT'
+      });
+      return;
+    }
+
+    // If extraction fails: fallback to meta description. Use JSDOM to get meta description
+    if (!extracted.content && html) {
+      const dom = new JSDOM(html, { url });
+      const doc = dom.window.document;
+      const metaDescription = doc.querySelector('meta[name="description"]')?.getAttribute('content') || '';
+      extracted.content = metaDescription || ''; // maybe empty
+      extracted.excerpt = metaDescription || '';
+      extracted.title = doc.title || '';
+    }
+    // If we still have no content (blocked fetch), at least pass the URL to the model
+    if (!extracted.content) {
+      extracted.content = '';
+      extracted.excerpt = extracted.excerpt || '';
+      extracted.title = extracted.title || '';
+    }
+
+    // Call model
+    let summaryText;
+    try {
+      console.log('[summarize] Calling OpenRouter');
+      summaryText = await callOpenRouterSummarize({
+        title: extracted.title,
+        excerpt: extracted.excerpt,
+        content: extracted.content,
+        url,
+        apiKey,
+      });
+      console.log('[summarize] OpenRouter call succeeded');
+    } catch (err) {
+      console.error('[summarize] OpenRouter call failed:', err);
+      res.status(500).json({ error: `Summarization failed: ${err.message}` });
+      return;
+    }
+
+    // Save to cache
+    const result = { title: extracted.title, excerpt: extracted.excerpt, summary: summaryText };
+    putInCache(cacheKey, result);
+
+    res.json(result);
+  } catch (err) {
+    console.error('Summarize function error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};

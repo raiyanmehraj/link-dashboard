@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Link Dashboard</title>
+  <link rel="stylesheet" href="styles.css?v=2.0">
+</head>
+<body>
+  <div id="root">
+    <!-- Top Navigation Bar -->
+    <header class="navbar">
+      <div class="navbar-container">
+        <div class="navbar-left">
+          <button class="mobile-menu-btn" id="mobileMenuBtn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+          <div class="logo">
+            <span class="logo-emoji">💸</span>
+            <span class="logo-text">Link<span class="logo-accent"> Dashboard</span></span>
+          </div>
+        </div>
+
+        <div class="search-container">
+          <div class="search-wrapper">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            <input 
+              type="text" 
+              id="searchInput" 
+              class="search-input" 
+              placeholder="Search links..."
+            >
+            <div class="search-shortcut">Ctrl+K</div>
+          </div>
+        </div>
+
+        <div class="navbar-right">
+            <button class="theme-toggle-btn" id="themeToggleBtn" aria-label="Toggle dark/light mode" title="Toggle theme">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="theme-icon">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+              </svg>
+            </button>
+            <button class="add-btn-desktop" id="addLinkBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>Add Link</span>
+            <kbd>Ctrl+N</kbd>
+          </button>
+          <button class="add-btn-mobile" id="addLinkBtnMobile">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Layout -->
+    <div class="main-layout">
+      <!-- Desktop Sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <button class="sidebar-toggle" id="sidebarToggle">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </button>
+        </div>
+        <div class="sidebar-content" id="sidebarContent">
+          <!-- Categories will be inserted here -->
+        </div>
+        <div class="sidebar-footer">
+        </div>
+      </aside>
+
+      <!-- Mobile Sidebar Overlay -->
+      <div class="mobile-sidebar-overlay" id="mobileSidebarOverlay"></div>
+      <div class="mobile-sidebar" id="mobileSidebar">
+        <div class="sidebar-content" id="mobileSidebarContent">
+          <!-- Categories will be inserted here -->
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <main class="content-area">
+        <div class="content-wrapper">
+          <div class="content-header">
+            <div>
+              <h1 class="content-title" id="contentTitle">Timeline</h1>
+              <div class="active-tag" id="activeTagContainer" style="display: none;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                  <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                </svg>
+                <span id="activeTagText"></span>
+                <button class="remove-tag-btn" id="removeTagBtn">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+              <p class="content-subtitle">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span id="entryCount">0</span> <span id="entryLabel">entries</span> sorted by newest
+              </p>
+            </div>
+          </div>
+
+          <div class="links-container" id="linksContainer">
+            <!-- Links will be inserted here -->
+          </div>
+
+          <div class="empty-state" id="emptyState" style="display: none;">
+            <div class="empty-state-icon">
+                <span class="empty-icon-text">&gt;_&lt;</span>
+              </div>
+            <p class="empty-state-title">No timeline entries found</p>
+            <p class="empty-state-text">
+              <span id="emptyStateMessage">
+                Press <kbd>Ctrl+K</kbd> to add a new link
+              </span>
+            </p>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Floating Action Button (Mobile) -->
+    <button class="fab" id="fab">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+    </button>
+
+    <!-- Add Link Modal -->
+    <div class="modal-overlay" id="modalOverlay"></div>
+    <div class="modal" id="addLinkModal">
+      <div class="modal-header">
+        <h2>Add New Link</h2>
+        <button class="modal-close" id="modalCloseBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <form class="modal-form" id="addLinkForm">
+        <div class="form-group">
+          <label for="titleInput">Title</label>
+          <input 
+            type="text" 
+            id="titleInput" 
+            class="form-input" 
+            placeholder="e.g. React Documentation"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="urlInput">URL</label>
+          <input 
+            type="text" 
+            id="urlInput" 
+            class="form-input" 
+            placeholder="e.g. react.dev"
+            required
+          >
+          <div class="url-mode-toggle" id="urlModeToggle">
+            <label class="mode-label">
+              <input type="radio" name="urlMode" value="single" checked id="modeUrlSingle" class="mode-radio">
+              <span>Single URL</span>
+            </label>
+            <label class="mode-label">
+              <input type="radio" name="urlMode" value="multiple" id="modeUrlMultiple" class="mode-radio">
+              <span>Multiple Sub-entries (URL optional)</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="contributorInput">Contributor / Citation</label>
+          <input 
+            type="text" 
+            id="contributorInput" 
+            class="form-input" 
+            placeholder="e.g. Mehraj, R. I. (2025)"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="dateInput">Date Added</label>
+          <input 
+            type="text" 
+            id="dateInput" 
+            class="form-input"
+            placeholder="dd/mm/yyyy"
+            pattern="\d{2}/\d{2}/\d{4}"
+          >
+          <small class="form-hint">Leave empty to use current time</small>
+        </div>
+
+        <div class="form-group">
+          <label>Category</label>
+          <div class="category-options" id="categoryOptions">
+            <!-- Category buttons will be inserted here -->
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="tagsInput">Tags</label>
+          <div class="tags-input" id="tagsContainer">
+            <input 
+              type="text" 
+              id="tagsInput" 
+              class="tags-input-field" 
+              placeholder="Type tag & press Enter"
+            >
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Sub-Entries</label>
+          <div id="subEntriesContainer" class="sub-entries-container">
+            <!-- Sub-entry inputs will be inserted here -->
+          </div>
+          <button type="button" id="addSubEntryBtn" class="btn btn-secondary">Add Sub-entry</button>
+          <small class="form-hint">Optional — add multiple titles/URLs that belong to this entry</small>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary">OK</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js?v=2.0"></script>
+</body>
+</html>
