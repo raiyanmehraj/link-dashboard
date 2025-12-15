@@ -13,12 +13,14 @@
       {
         "id": "848206f8-c7ca-4283-a053-18ad08486b03",
         "title": "Automate",
-        "url": "https://automate-routine.vercel.app"
+        "url": "https://automate-routine.vercel.app",
+        "isError": true
       },
       {
         "id": "227eafb1-1252-4700-b8cb-3e726b115f24",
         "title": "Preprereg",
-        "url": "https://preprereg.vercel.app"
+        "url": "https://preprereg.vercel.app",
+        "isError": false
       }
     ]
   },
