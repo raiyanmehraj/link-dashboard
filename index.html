@@ -260,6 +260,26 @@
         </div>
       </form>
     </div>
+
+    <!-- Model Selection Modal -->
+    <div class="modal-overlay" id="modelModalOverlay"></div>
+    <div class="modal model-select-modal" id="modelSelectModal">
+      <div class="modal-header">
+        <h2>Select AI Model</h2>
+        <button class="modal-close" id="modelModalCloseBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="model-description">Choose an AI model to generate the summary:</p>
+        <div class="model-list" id="modelList">
+          <!-- Models will be inserted here -->
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="app.js?v=2.0"></script>

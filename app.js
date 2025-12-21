@@ -4,6 +4,14 @@ const STORAGE_KEY = 'study-links';
 const THEME_STORAGE_KEY = 'link-dashboard-theme';
 const GITHUB_SYNC_ENABLED = true; // Set to false to disable GitHub sync
 
+// Available AI Models (must match the API)
+const AVAILABLE_MODELS = [
+  { id: 'nousresearch/hermes-3-llama-3.1-405b:free', name: 'Hermes 3 Llama 3.1 405B', label: 'Best quality (slower)' },
+  { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B', label: 'Fast and efficient' },
+  { id: 'google/gemma-2-9b-it:free', name: 'Gemma 2 9B', label: 'Google model' },
+  { id: 'openai/gpt-oss-120b:free', name: 'GPT OSS 120B', label: 'OpenAI-style' }
+];
+
 let state = {
   links: [],
   searchQuery: '',
@@ -127,7 +135,78 @@ const elements = {
   sidebar: document.getElementById('sidebar'),
   mobileSidebarOverlay: document.getElementById('mobileSidebarOverlay'),
   mobileSidebar: document.getElementById('mobileSidebar'),
+  
+  // Model Selection Modal
+  modelModalOverlay: document.getElementById('modelModalOverlay'),
+  modelSelectModal: document.getElementById('modelSelectModal'),
+  modelModalCloseBtn: document.getElementById('modelModalCloseBtn'),
+  modelList: document.getElementById('modelList'),
 };
+
+// Model Selection Modal Functions
+function openModelSelectionModal() {
+  return new Promise((resolve, reject) => {
+    const { modelModalOverlay, modelSelectModal, modelList, modelModalCloseBtn } = elements;
+    
+    // Render model options
+    modelList.innerHTML = AVAILABLE_MODELS.map(model => `
+      <div class="model-option" data-model-id="${escapeHTML(model.id)}">
+        <div class="model-name">${escapeHTML(model.name)}</div>
+        <div class="model-label">${escapeHTML(model.label)}</div>
+      </div>
+    `).join('');
+    
+    // Show modal
+    modelModalOverlay.style.display = 'block';
+    modelSelectModal.classList.add('active');
+    
+    // Handle model selection
+    const handleModelClick = (e) => {
+      const option = e.target.closest('.model-option');
+      if (option) {
+        const modelId = option.dataset.modelId;
+        closeModelSelectionModal();
+        cleanup();
+        resolve(modelId);
+      }
+    };
+    
+    // Handle close
+    const handleClose = () => {
+      closeModelSelectionModal();
+      cleanup();
+      reject(new Error('Model selection cancelled'));
+    };
+    
+    // Handle escape key
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        handleClose();
+      }
+    };
+    
+    // Attach listeners
+    modelList.addEventListener('click', handleModelClick);
+    modelModalCloseBtn.addEventListener('click', handleClose);
+    modelModalOverlay.addEventListener('click', handleClose);
+    document.addEventListener('keydown', handleEscape);
+    
+    // Cleanup function
+    function cleanup() {
+      modelList.removeEventListener('click', handleModelClick);
+      modelModalCloseBtn.removeEventListener('click', handleClose);
+      modelModalOverlay.removeEventListener('click', handleClose);
+      document.removeEventListener('keydown', handleEscape);
+    }
+  });
+}
+
+function closeModelSelectionModal() {
+  const { modelModalOverlay, modelSelectModal } = elements;
+  modelSelectModal.classList.remove('active');
+  modelModalOverlay.style.display = 'none';
+}
+
 // Initialize
 async function init() {
   initTheme();
@@ -983,6 +1062,15 @@ async function handleSummarize(id, btn) {
     if (!ok) return;
   }
 
+  // Show model selection modal
+  let selectedModel;
+  try {
+    selectedModel = await openModelSelectionModal();
+  } catch (err) {
+    // User cancelled model selection
+    return;
+  }
+
   const originalInner = btn ? btn.innerHTML : null;
   const originalTitle = btn ? (btn.getAttribute('title') || 'Summarize') : null;
   try {
@@ -1002,7 +1090,7 @@ async function handleSummarize(id, btn) {
     const response = await fetch('/api/summarize', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: link.url }),
+      body: JSON.stringify({ url: link.url, model: selectedModel }),
     });
     const data = await response.json();
 
@@ -1058,6 +1146,15 @@ async function handleSummarizeSubEntry(linkId, subEntryId, btn) {
     if (!ok) return;
   }
 
+  // Show model selection modal
+  let selectedModel;
+  try {
+    selectedModel = await openModelSelectionModal();
+  } catch (err) {
+    // User cancelled model selection
+    return;
+  }
+
   const original = btn ? btn.innerHTML : null;
   const originalTitle = btn ? (btn.getAttribute('title') || 'Summarize') : null;
   try {
@@ -1072,7 +1169,7 @@ async function handleSummarizeSubEntry(linkId, subEntryId, btn) {
     const response = await fetch('/api/summarize', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: sub.url }),
+      body: JSON.stringify({ url: sub.url, model: selectedModel }),
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Summarization failed');

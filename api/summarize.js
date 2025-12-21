@@ -145,7 +145,7 @@ function truncateContent(content, maxChars = 20000) {
   return content.length > maxChars ? content.slice(0, maxChars) : content;
 }
 
-async function callOpenRouterSummarize({ title, excerpt, content, url, apiKeys }) {
+async function callOpenRouterSummarize({ title, excerpt, content, url, apiKeys, preferredModel }) {
   const text = `${title ? title + '\n\n' : ''}${excerpt ? excerpt + '\n\n' : ''}${content || ''}`;
   const truncated = truncateContent(text, 20000);
 
@@ -161,21 +161,26 @@ async function callOpenRouterSummarize({ title, excerpt, content, url, apiKeys }
     content: `Summarize this web page in 2-3 sentences maximum. Be precise and capture only the most essential information.\n\nSource URL: ${url}\n\nContent:\n${truncated}`,
   };
 
-  // Try each free model in sequence until one works
+  // If a preferred model is specified, try it first, then fall back to FREE_MODELS list
+  const modelsToTry = preferredModel 
+    ? [preferredModel, ...FREE_MODELS.filter(m => m !== preferredModel)]
+    : FREE_MODELS;
+
+  // Try each model in sequence until one works
   let lastError;
   const exhaustedKeys = new Set();
   const referer = process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}`
     : (process.env.SITE_URL || 'http://localhost:3000');
 
-  for (let modelIndex = 0; modelIndex < FREE_MODELS.length; modelIndex++) {
-    const currentModel = FREE_MODELS[modelIndex];
+  for (let modelIndex = 0; modelIndex < modelsToTry.length; modelIndex++) {
+    const currentModel = modelsToTry[modelIndex];
     
     if (modelIndex > 0) {
-      console.log(`[summarize] Trying fallback model ${modelIndex + 1}/${FREE_MODELS.length}: ${currentModel}`);
+      console.log(`[summarize] Trying fallback model ${modelIndex + 1}/${modelsToTry.length}: ${currentModel}`);
       await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
     } else {
-      console.log(`[summarize] Trying primary model: ${currentModel}`);
+      console.log(`[summarize] Trying ${preferredModel ? 'preferred' : 'primary'} model: ${currentModel}`);
     }
 
     const body = {
@@ -260,13 +265,13 @@ module.exports = async function (req, res) {
       return;
     }
 
-    const { url } = req.body || {};
+    const { url, model } = req.body || {};
     if (!url || typeof url !== 'string') {
       res.status(400).json({ error: 'Missing or invalid url' });
       return;
     }
 
-    const cacheKey = `summary:${url}`;
+    const cacheKey = `summary:${url}:${model || 'default'}`;
     const cached = getFromCache(cacheKey);
     if (cached) {
       return res.json({ ...cached, cached: true });
@@ -317,13 +322,14 @@ module.exports = async function (req, res) {
     // Call model
     let summaryText;
     try {
-      console.log('[summarize] Calling OpenRouter');
+      console.log('[summarize] Calling OpenRouter with model:', model || 'default');
       summaryText = await callOpenRouterSummarize({
         title: extracted.title,
         excerpt: extracted.excerpt,
         content: extracted.content,
         url,
         apiKeys,
+        preferredModel: model,
       });
       console.log('[summarize] OpenRouter call succeeded');
     } catch (err) {
