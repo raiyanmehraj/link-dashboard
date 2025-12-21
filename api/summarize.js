@@ -47,10 +47,10 @@ const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 // List of precise free models with better limits, ordered by quality
 // Using known working free models from OpenRouter
 const FREE_MODELS = [
-  'mistralai/mistral-7b-instruct:free',
+  'nousresearch/hermes-3-llama-3.1-405b:free',
   'meta-llama/llama-3.1-8b-instruct:free',
   'google/gemma-2-9b-it:free',
-  'meta-llama/llama-3.2-3b-instruct:free'
+  'openai/gpt-oss-120b:free'
 ];
 const RETRY_DELAY_MS = 1500; // Shorter delay since we'll try different models
 const CACHE_TTL_SECONDS = 60 * 60 * 24; // 24 hours
