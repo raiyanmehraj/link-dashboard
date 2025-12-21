@@ -982,6 +982,15 @@ async function handleSummarizeMultiEntry(linkId, btn) {
     if (!ok) return;
   }
 
+  // Show model selection modal once for the batch
+  let selectedModel;
+  try {
+    selectedModel = await openModelSelectionModal();
+  } catch (err) {
+    // User cancelled model selection
+    return;
+  }
+
   const originalInner = btn ? btn.innerHTML : null;
   const originalTitle = btn ? (btn.getAttribute('title') || 'Summarize') : null;
   
@@ -999,13 +1008,13 @@ async function handleSummarizeMultiEntry(linkId, btn) {
       btn.setAttribute('title', 'Summarizing all entries...');
     }
 
-    // Summarize all sub-entries in parallel
+    // Summarize all sub-entries in parallel using the selected model
     const summaryPromises = link.subEntries.map(async (sub) => {
       try {
         const response = await fetch('/api/summarize', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: sub.url }),
+          body: JSON.stringify({ url: sub.url, model: selectedModel }),
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Summarization failed');
