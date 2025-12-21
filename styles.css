@@ -1750,6 +1750,7 @@ body {
 /* Model Selection Modal */
 .model-select-modal {
   max-width: 520px;
+  overflow-x: hidden;
 }
 
 .model-description {
@@ -1764,6 +1765,7 @@ body {
   gap: 8px;
   max-height: 400px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .model-option {
@@ -1776,12 +1778,14 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
+  word-wrap: break-word;
 }
 
 .model-option:hover {
   background-color: rgba(6, 182, 212, 0.1);
   border-color: var(--accent-cyan);
-  transform: translateX(4px);
+  transform: translateY(-2px);
 }
 
 .model-name {
@@ -1789,13 +1793,19 @@ body {
   color: var(--text-primary);
   font-size: 14px;
   font-family: 'Monaco', 'Courier New', monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .model-label {
   color: var(--text-secondary);
   font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .model-option:active {
-  transform: translateX(4px) scale(0.98);
+  transform: translateY(-2px) scale(0.98);
 }
