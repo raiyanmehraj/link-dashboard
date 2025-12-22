@@ -100,7 +100,8 @@
       "cse220"
     ],
     "createdAt": 1765735200000,
-    "subEntries": []
+    "subEntries": [],
+    "isError": true
   },
   {
     "id": "5",
