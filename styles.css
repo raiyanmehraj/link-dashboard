@@ -229,7 +229,8 @@ body {
 
 /* Theme Toggle Button */
 .theme-toggle-btn,
-.github-sync-btn {
+.github-sync-btn,
+.archive-toggle-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -244,7 +245,8 @@ body {
 }
 
 .theme-toggle-btn:hover,
-.github-sync-btn:hover {
+.github-sync-btn:hover,
+.archive-toggle-btn:hover {
   background-color: var(--bg-tertiary);
   border-color: var(--accent-cyan);
   color: var(--accent-cyan);
@@ -256,6 +258,12 @@ body {
 
 .theme-toggle-btn:active .theme-icon {
   transform: rotate(20deg);
+}
+
+.archive-toggle-btn.active {
+  background-color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  color: var(--bg-primary);
 }
 
 .github-sync-btn:active svg {

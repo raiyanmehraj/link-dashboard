@@ -25,6 +25,7 @@ let state = {
   editingId: null,
   subEntries: [],
   urlMode: 'single', // 'single' or 'multiple'
+  showArchived: false, // Toggle between active and archived links
 };
 
 // Theme Management
@@ -140,6 +141,7 @@ const elements = {
   fab: document.getElementById('fab'),
   mobileMenuBtn: document.getElementById('mobileMenuBtn'),
   sidebarToggle: document.getElementById('sidebarToggle'),
+  archiveToggleBtn: document.getElementById('archiveToggleBtn'),
   
   // Modal
   modalOverlay: document.getElementById('modalOverlay'),
@@ -375,6 +377,15 @@ function attachEventListeners() {
   elements.addLinkBtn.addEventListener('click', openModal);
   elements.addLinkBtnMobile.addEventListener('click', openModal);
   elements.fab.addEventListener('click', openModal);
+
+  // Archive Toggle Button
+  elements.archiveToggleBtn.addEventListener('click', () => {
+    state.showArchived = !state.showArchived;
+    state.activeCategory = 'All'; // Reset to All category when toggling archives
+    renderLinks();
+    // Visual feedback for archive button
+    elements.archiveToggleBtn.classList.toggle('active', state.showArchived);
+  });
 
   // Modal
   elements.modalCloseBtn.addEventListener('click', closeModal);
@@ -730,6 +741,13 @@ function renderCategoryOptions() {
 
 // Sidebar Functions
 function renderSidebar() {
+  // Hide sidebar when in archive view
+  if (state.showArchived) {
+    elements.sidebarContent.innerHTML = '';
+    elements.mobileSidebarContent.innerHTML = '';
+    return;
+  }
+
   const categories = [
     { id: 'All', label: 'All Links', icon: 'grid' },
     { id: 'Study Materials', label: 'Study Materials', icon: 'book' },
@@ -739,8 +757,8 @@ function renderSidebar() {
 
   const sidebarHTML = categories.map((cat) => {
     const count = cat.id === 'All' 
-      ? state.links.length 
-      : state.links.filter((l) => l.category === cat.id).length;
+      ? state.links.filter((l) => !l.archived).length
+      : state.links.filter((l) => l.category === cat.id && !l.archived).length;
     const isActive = state.activeCategory === cat.id;
     
     return `
@@ -808,7 +826,8 @@ function getFilteredLinks() {
     const matchesCategory =
       state.activeCategory === 'All' || link.category === state.activeCategory;
     const matchesTag = state.activeTag === null || link.tags?.includes(state.activeTag);
-    return matchesSearch && matchesCategory && matchesTag;
+    const matchesArchiveStatus = state.showArchived ? link.archived : !link.archived;
+    return matchesSearch && matchesCategory && matchesTag && matchesArchiveStatus;
   });
 }
 
@@ -816,7 +835,12 @@ function renderLinks() {
   const filteredLinks = getFilteredLinks();
   
   // Update header
-  const title = state.activeCategory === 'All' ? 'Timeline' : state.activeCategory;
+  let title;
+  if (state.showArchived) {
+    title = 'Archive';
+  } else {
+    title = state.activeCategory === 'All' ? 'Timeline' : state.activeCategory;
+  }
   elements.contentTitle.textContent = title;
   
   // Update active tag display
@@ -920,6 +944,13 @@ function createLinkCard(link, index, isLast) {
                 <path d="M12 2 L12 12 M2 12 L22 12"></path>
               </svg>
             </button>
+            <button class="link-action-btn archive" data-id="${link.id}" aria-label="${state.showArchived ? 'Unarchive link' : 'Archive link'}" title="${state.showArchived ? 'Unarchive' : 'Archive'}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="7" width="20" height="13" rx="2" ry="2"></rect>
+                <path d="M16 7v-2a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"></path>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+              </svg>
+            </button>
             <button class="link-action-btn delete" data-id="${link.id}" aria-label="Delete link">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"></polyline>
@@ -944,6 +975,11 @@ function createLinkCard(link, index, isLast) {
     e.stopPropagation();
     state.editingId = link.id;
     openModal();
+  });
+  card.querySelector('.link-action-btn.archive').addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    archiveLink(link.id);
   });
   card.querySelector('.link-action-btn.delete').addEventListener('click', (e) => {
     e.preventDefault();
@@ -992,6 +1028,23 @@ function createLinkCard(link, index, isLast) {
   // Removed Paste Content feature
 
   return card;
+}
+
+function archiveLink(id) {
+  const link = state.links.find((l) => l.id === id);
+  if (!link) return;
+  
+  const isCurrentlyArchived = link.archived;
+  const message = isCurrentlyArchived 
+    ? 'Are you sure you want to unarchive this link?' 
+    : 'Are you sure you want to archive this link?';
+  
+  const confirmed = confirm(message);
+  if (confirmed) {
+    link.archived = !link.archived;
+    saveLinksToStorage();
+    renderLinks();
+  }
 }
 
 function deleteLink(id) {
