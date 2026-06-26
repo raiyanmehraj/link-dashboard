@@ -31,8 +31,7 @@
       "cse250"
     ],
     "createdAt": 1772733600000,
-    "subEntries": [],
-    "isError": true
+    "subEntries": []
   },
   {
     "id": "b3e6ee1e-4b78-4ca7-8f64-4bc6ff16bb6f",
@@ -120,7 +119,7 @@
         "id": "98be4ab4-52e1-45a4-b541-e30fd55570e6",
         "title": "Resource Thread",
         "url": "https://www.facebook.com/groups/488022473475837/posts/871531851791562/",
-        "isError": true
+        "isError": false
       }
     ],
     "isError": true
