@@ -31,7 +31,8 @@
       "cse250"
     ],
     "createdAt": 1772733600000,
-    "subEntries": []
+    "subEntries": [],
+    "isError": true
   },
   {
     "id": "b3e6ee1e-4b78-4ca7-8f64-4bc6ff16bb6f",
