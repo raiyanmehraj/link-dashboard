@@ -31,8 +31,7 @@
       "cse250"
     ],
     "createdAt": 1772733600000,
-    "subEntries": [],
-    "isError": true
+    "subEntries": []
   },
   {
     "id": "b3e6ee1e-4b78-4ca7-8f64-4bc6ff16bb6f",
@@ -83,7 +82,7 @@
         "id": "227eafb1-1252-4700-b8cb-3e726b115f24",
         "title": "Preprereg",
         "url": "https://preprereg.vercel.app",
-        "isError": false
+        "isError": true
       }
     ]
   },
